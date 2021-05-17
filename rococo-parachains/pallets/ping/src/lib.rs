@@ -24,8 +24,21 @@ use frame_system::Config as SystemConfig;
 use cumulus_primitives_core::ParaId;
 use cumulus_pallet_xcm::{Origin as CumulusOrigin, ensure_sibling_para};
 use xcm::v0::{Xcm, Error as XcmError, SendXcm, OriginKind, MultiLocation, Junction};
+use codec::{Decode, Encode};
 
 pub use pallet::*;
+
+#[derive(Encode, Decode)]
+pub enum RelayTemplatePalletCall {
+	#[codec(index = 100)] // the index should match the position of the module in `construct_runtime!`
+	DoSomething(DoSomethingCall),
+}
+
+#[derive(Encode, Decode)]
+pub enum DoSomethingCall {
+	#[codec(index = 0)] // the index should match the position of the dispatchable in the target pallet
+	Something(u32),
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -88,6 +101,8 @@ pub mod pallet {
 		ErrorSendingPing(XcmError, ParaId, u32, Vec<u8>),
 		ErrorSendingPong(XcmError, ParaId, u32, Vec<u8>),
 		UnknownPong(ParaId, u32, Vec<u8>),
+		TestMsg(u32),
+		ErrorSendingTest(),
 	}
 
 	#[pallet::error]
@@ -115,6 +130,41 @@ pub mod pallet {
 					Err(e) => {
 						Self::deposit_event(Event::ErrorSendingPing(e, para, seq, payload));
 					}
+				}
+			}
+			log::info!(
+				target: "ping",
+				"Begin construct relay transact"
+			);
+			let some_value:u32 = 10;
+			let call = RelayTemplatePalletCall::DoSomething(DoSomethingCall::Something(some_value)).encode();
+
+			let msg = Xcm::Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: 1_000,
+				call:call.into(),
+			};
+
+			log::info!(
+				target: "ping",
+				"Relay transact {:?}",
+				msg,
+			);
+
+			match T::XcmSender::send_xcm(MultiLocation::X1(Junction::Parent), msg){
+				Ok(()) => {
+					Self::deposit_event(Event::TestMsg(some_value));
+					log::info!(
+						target: "ping",
+						"Relay transact sent success!"
+					);
+				},
+				Err(e) => {
+					Self::deposit_event(Event::ErrorSendingTest());
+					log::error!(
+						target: "ping",
+						"Relay transact sent failed!"
+					);
 				}
 			}
 		}
