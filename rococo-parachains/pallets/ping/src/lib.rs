@@ -132,41 +132,6 @@ pub mod pallet {
 					}
 				}
 			}
-			log::info!(
-				target: "ping",
-				"Begin construct relay transact"
-			);
-			let some_value:u32 = 10;
-			let call = RelayTemplatePalletCall::DoSomething(DoSomethingCall::Something(some_value)).encode();
-
-			let msg = Xcm::Transact {
-				origin_type: OriginKind::SovereignAccount,
-				require_weight_at_most: 1000000,
-				call:call.into(),
-			};
-
-			log::info!(
-				target: "ping",
-				"Relay transact {:?}",
-				msg,
-			);
-
-			match T::XcmSender::send_xcm(MultiLocation::X1(Junction::Parent), msg){
-				Ok(()) => {
-					Self::deposit_event(Event::TestMsg(some_value));
-					log::info!(
-						target: "ping",
-						"Relay transact sent success!"
-					);
-				},
-				Err(e) => {
-					Self::deposit_event(Event::ErrorSendingTest());
-					log::error!(
-						target: "ping",
-						"Relay transact sent failed!"
-					);
-				}
-			}
 		}
 	}
 
@@ -238,6 +203,45 @@ pub mod pallet {
 				Self::deposit_event(Event::UnknownPong(para, seq, payload));
 			}
 			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		fn test(origin: OriginFor<T>, some_value: u32) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let call = RelayTemplatePalletCall::DoSomething(DoSomethingCall::Something(some_value)).encode();
+
+			let msg = Xcm::Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: 1_000,
+				call: call.into(),
+			};
+
+			log::info!(
+				target: "ping",
+				"Relay transact from {:?} as {:?}",
+				who,
+				msg,
+			);
+
+			match T::XcmSender::send_xcm(MultiLocation::X1(Junction::Parent), msg) {
+				Ok(()) => {
+					Self::deposit_event(Event::TestMsg(some_value));
+					log::info!(
+						target: "ping",
+						"Relay transact sent success!"
+					);
+				},
+				Err(e) => {
+					Self::deposit_event(Event::ErrorSendingTest());
+					log::error!(
+						target: "ping",
+						"Relay transact sent failed:{:?}",
+						e,
+					);
+				}
+			}
+			Ok(());
 		}
 	}
 }
