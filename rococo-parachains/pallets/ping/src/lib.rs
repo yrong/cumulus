@@ -241,7 +241,7 @@ pub mod pallet {
 					);
 				}
 			}
-			Ok(());
+			Ok(())
 		}
 	}
 }
