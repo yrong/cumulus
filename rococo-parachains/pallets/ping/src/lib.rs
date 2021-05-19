@@ -141,7 +141,7 @@ pub mod pallet {
 
 			let msg = Xcm::Transact {
 				origin_type: OriginKind::SovereignAccount,
-				require_weight_at_most: 1_000,
+				require_weight_at_most: 1000000,
 				call:call.into(),
 			};
 
