@@ -37,7 +37,7 @@ pub enum RelayTemplatePalletCall {
 #[derive(Encode, Decode)]
 pub enum DoSomethingCall {
 	#[codec(index = 0)] // the index should match the position of the dispatchable in the target pallet
-	Something(u32),
+	Something(u32,#[compact] u32),
 }
 
 #[frame_support::pallet]
