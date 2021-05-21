@@ -391,6 +391,7 @@ impl cumulus_ping::Config for Runtime {
 	type Origin = Origin;
 	type Call = Call;
 	type XcmSender = XcmRouter;
+    type SelfParaId = parachain_info::Pallet<Runtime>;
 }
 
 parameter_types! {

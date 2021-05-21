@@ -74,6 +74,7 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
+polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 
 [build-dependencies]
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
@@ -86,7 +87,6 @@ tempfile = "3.2.0"
 tokio = { version = "0.2.13", features = ["macros"] }
 
 # Polkadot dependencies
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 polkadot-test-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 polkadot-test-client = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 polkadot-test-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }

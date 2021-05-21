@@ -24,10 +24,14 @@ use frame_system::Config as SystemConfig;
 use cumulus_primitives_core::ParaId;
 use cumulus_pallet_xcm::{Origin as CumulusOrigin, ensure_sibling_para};
 use xcm::v0::{Xcm, Error as XcmError, SendXcm, OriginKind, MultiLocation, Junction};
-
+use frame_support::traits::Currency;
 pub use pallet::*;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, Compact, HasCompact};
+use frame_support::sp_runtime::MultiSignature;
+
+type BalanceOf = u128;
+
 #[derive(Encode, Decode)]
 pub enum RelayTemplatePalletCall {
 	#[codec(index = 100)] // the index should match the position of the module in `construct_runtime!`
@@ -38,6 +42,27 @@ pub enum RelayTemplatePalletCall {
 pub enum DoSomethingCall {
 	#[codec(index = 0)] // the index should match the position of the dispatchable in the target pallet
 	Something(u32),
+}
+
+#[derive(Encode, Decode)]
+pub enum CrowdloanPalletCall {
+	#[codec(index = 27)] // the index should match the position of the module in `construct_runtime!`
+	CrowdloanContribute(ContributeCall),
+}
+
+#[derive(Debug, PartialEq, Encode, Decode)]
+pub struct Contribution {
+	#[codec(compact)]
+	index: ParaId,
+	#[codec(compact)]
+	value: BalanceOf,
+	signature: Option<MultiSignature>,
+}
+
+#[derive(Encode, Decode)]
+pub enum ContributeCall {
+	#[codec(index = 1)] // the index should match the position of the dispatchable in the target pallet
+	Contribute(Contribution),
 }
 
 #[frame_support::pallet]
@@ -62,6 +87,9 @@ pub mod pallet {
 		type Call: From<Call<Self>> + Encode;
 
 		type XcmSender: SendXcm;
+
+		type SelfParaId: Get<ParaId>;
+
 	}
 
 	/// The target parachains to ping.
@@ -213,13 +241,13 @@ pub mod pallet {
 
 			let msg = Xcm::Transact {
 				origin_type: OriginKind::SovereignAccount,
-				require_weight_at_most: 1_000,
+				require_weight_at_most: 1000000,
 				call: call.into(),
 			};
 
 			log::info!(
 				target: "ping",
-				"Relay transact from {:?} as {:?}",
+				"Test pallet transact from {:?} as {:?}",
 				who,
 				msg,
 			);
@@ -229,19 +257,75 @@ pub mod pallet {
 					Self::deposit_event(Event::TestMsg(some_value));
 					log::info!(
 						target: "ping",
-						"Relay transact sent success!"
+						"Test pallet transact sent success!"
 					);
 				},
 				Err(e) => {
 					Self::deposit_event(Event::ErrorSendingTest());
 					log::error!(
 						target: "ping",
-						"Relay transact sent failed:{:?}",
+						"Test pallet transact sent failed:{:?}",
 						e,
 					);
 				}
 			}
-			Ok(());
+			Ok(())
+		}
+
+
+		#[pallet::weight(0)]
+		fn contribute(origin: OriginFor<T>, #[pallet::compact] value: BalanceOf) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let para_id = T::SelfParaId::get();
+
+			log::info!(
+				target: "ping",
+				"para_id as {:?}",
+				para_id,
+			);
+
+			let contribution = Contribution{ index: para_id, value, signature: None };
+
+			log::info!(
+				target: "ping",
+				"contribution as {:?}",
+				contribution,
+			);
+
+			let call = CrowdloanPalletCall::CrowdloanContribute(ContributeCall::Contribute(contribution)).encode();
+
+			let msg = Xcm::Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: 1000000,
+				call: call.into(),
+			};
+
+			log::info!(
+				target: "ping",
+				"Crowdloan transact from {:?} as {:?}",
+				who,
+				msg,
+			);
+
+			match T::XcmSender::send_xcm(MultiLocation::X1(Junction::Parent), msg) {
+				Ok(()) => {
+					Self::deposit_event(Event::TestMsg(0));
+					log::info!(
+						target: "ping",
+						"Crowdloan transact sent success!"
+					);
+				},
+				Err(e) => {
+					Self::deposit_event(Event::ErrorSendingTest());
+					log::error!(
+						target: "ping",
+						"Crowdloan transact sent failed:{:?}",
+						e,
+					);
+				}
+			}
+			Ok(())
 		}
 	}
 }
