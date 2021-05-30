@@ -359,7 +359,7 @@ pub mod pallet {
 				msg,
 			);
 
-			match T::XcmSender::send_xcm(MultiLocation::Null, msg) {
+			match T::XcmSender::send_xcm(MultiLocation::X1(Junction::Parent), msg) {
 				Ok(()) => {
 					Self::deposit_event(Event::TestMsg(some_value as u32));
 					log::info!(
