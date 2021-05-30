@@ -66,6 +66,9 @@ use xcm_builder::{
 use xcm_executor::{Config, XcmExecutor};
 use pallet_xcm::{XcmPassthrough, EnsureXcm, IsMajorityOfBody};
 use xcm::v0::Xcm;
+use sp_std::marker::PhantomData;
+use frame_support::traits::Contains;
+use xcm_executor::traits::ShouldExecute;
 
 pub type SessionHandlers = ();
 
@@ -280,7 +283,6 @@ pub type LocalAssetTransactor = CurrencyAdapter<
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly):
 	AccountId,
-	// We don't track any teleports.
 	(),
 >;
 
@@ -321,11 +323,30 @@ match_type! {
 	};
 }
 
+/// Transparent XcmTransact Barrier for sybil demo. Polkadot will probably come up with a
+/// better solution for this. Currently, they have not setup a barrier config for `XcmTransact`
+pub struct AllowXcmTransactFrom<T>(PhantomData<T>);
+impl<T: Contains<MultiLocation>> ShouldExecute for AllowXcmTransactFrom<T> {
+	fn should_execute<Call>(
+		_origin: &MultiLocation,
+		_top_level: bool,
+		message: &Xcm<Call>,
+		_shallow_weight: Weight,
+		_weight_credit: &mut Weight,
+	) -> Result<(), ()> {
+		match message {
+			Xcm::Transact { origin_type: _ , require_weight_at_most: _, call: _ } => Ok(()),
+			_ => Err(())
+		}
+	}
+}
+
 pub type Barrier = (
 	TakeWeightCredit,
 	AllowTopLevelPaidExecutionFrom<All<MultiLocation>>,
 	AllowUnpaidExecutionFrom<ParentOrParentsUnitPlurality>,
 	// ^^^ Parent & its unit plurality gets free execution
+	AllowXcmTransactFrom<All<MultiLocation>>
 );
 
 pub struct XcmConfig;
@@ -392,6 +413,10 @@ impl cumulus_ping::Config for Runtime {
 	type Call = Call;
 	type XcmSender = XcmRouter;
     type SelfParaId = parachain_info::Pallet<Runtime>;
+	type AccountId = sp_runtime::AccountId32;
+	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
+	type UnitWeightCost = UnitWeightCost;
+
 }
 
 parameter_types! {

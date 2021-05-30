@@ -24,10 +24,9 @@ use frame_system::Config as SystemConfig;
 use cumulus_primitives_core::ParaId;
 use cumulus_pallet_xcm::{Origin as CumulusOrigin, ensure_sibling_para};
 use xcm::v0::{Xcm, Error as XcmError, SendXcm, OriginKind, MultiLocation, Junction};
-use frame_support::traits::Currency;
 pub use pallet::*;
 
-use codec::{Decode, Encode, Compact, HasCompact};
+use codec::{Decode, Encode};
 use frame_support::sp_runtime::MultiSignature;
 
 type BalanceOf = u128;
@@ -70,6 +69,8 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use super::*;
+	use xcm::v0::{MultiAsset};
+	use xcm::v0::opaque::Order;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -89,6 +90,12 @@ pub mod pallet {
 		type XcmSender: SendXcm;
 
 		type SelfParaId: Get<ParaId>;
+
+		type AccountId: From<<Self as SystemConfig>::AccountId>;
+
+		type SendXcmOrigin: EnsureOrigin<<Self as SystemConfig>::Origin, Success=MultiLocation>;
+
+		type UnitWeightCost: Get<u64>;
 
 	}
 
@@ -134,7 +141,9 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		PingError,
+	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
@@ -234,14 +243,14 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		fn test(origin: OriginFor<T>, some_value: u32) -> DispatchResult {
+		fn test_upward_test_call(origin: OriginFor<T>, some_value: u32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let call = RelayTemplatePalletCall::DoSomething(DoSomethingCall::Something(some_value)).encode();
 
 			let msg = Xcm::Transact {
 				origin_type: OriginKind::SovereignAccount,
-				require_weight_at_most: 1000000,
+				require_weight_at_most: u64::MAX,
 				call: call.into(),
 			};
 
@@ -257,14 +266,14 @@ pub mod pallet {
 					Self::deposit_event(Event::TestMsg(some_value));
 					log::info!(
 						target: "ping",
-						"Test pallet transact sent success!"
+						"test transact sent success!"
 					);
 				},
 				Err(e) => {
 					Self::deposit_event(Event::ErrorSendingTest());
 					log::error!(
 						target: "ping",
-						"Test pallet transact sent failed:{:?}",
+						"test transact sent failed:{:?}",
 						e,
 					);
 				}
@@ -274,37 +283,25 @@ pub mod pallet {
 
 
 		#[pallet::weight(0)]
-		fn contribute(origin: OriginFor<T>, #[pallet::compact] value: BalanceOf) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+		fn test_upward_crowdloan_contribute(origin: OriginFor<T>, #[pallet::compact] value: BalanceOf) -> DispatchResult {
+			let _who = ensure_signed(origin)?;
 
 			let para_id = T::SelfParaId::get();
 
-			log::info!(
-				target: "ping",
-				"para_id as {:?}",
-				para_id,
-			);
-
 			let contribution = Contribution{ index: para_id, value, signature: None };
-
-			log::info!(
-				target: "ping",
-				"contribution as {:?}",
-				contribution,
-			);
 
 			let call = CrowdloanPalletCall::CrowdloanContribute(ContributeCall::Contribute(contribution)).encode();
 
 			let msg = Xcm::Transact {
 				origin_type: OriginKind::SovereignAccount,
-				require_weight_at_most: 1000000,
+				require_weight_at_most: u64::MAX,
 				call: call.into(),
 			};
 
 			log::info!(
 				target: "ping",
-				"Crowdloan transact from {:?} as {:?}",
-				who,
+				"crowdloan transact from {:?} as {:?}",
+				para_id,
 				msg,
 			);
 
@@ -313,14 +310,138 @@ pub mod pallet {
 					Self::deposit_event(Event::TestMsg(0));
 					log::info!(
 						target: "ping",
-						"Crowdloan transact sent success!"
+						"crowdloan transact sent success!"
 					);
 				},
 				Err(e) => {
 					Self::deposit_event(Event::ErrorSendingTest());
 					log::error!(
 						target: "ping",
-						"Crowdloan transact sent failed:{:?}",
+						"crowdloan transact sent failed:{:?}",
+						e,
+					);
+				}
+			}
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		fn test_upward_transfer(origin: OriginFor<T>, some_value: u128) -> DispatchResult {
+
+			let origin_location:MultiLocation = T::SendXcmOrigin::ensure_origin(origin)?;
+
+			let account_location = origin_location.first().ok_or_else(|| Error::<T>::PingError)?;
+
+			let account_32 = &*(account_location);
+
+			let debt = T::UnitWeightCost::get() * 10;
+
+			let msg = Xcm::ReserveAssetDeposit {
+				assets:vec![MultiAsset::ConcreteFungible { id: MultiLocation::Null, amount: some_value }],
+				effects: vec![
+					Order::BuyExecution {
+						fees: MultiAsset::All,
+						weight: 0,
+						debt,
+						halt_on_error: false,
+						xcm: vec![]
+					},
+					Order::DepositAsset {
+						assets: vec![MultiAsset::All],
+						dest: MultiLocation::X1(account_32.clone()),
+					}
+				]
+			};
+
+			log::info!(
+				target: "ping",
+				"upward transfer {:?}",
+				msg,
+			);
+
+			match T::XcmSender::send_xcm(MultiLocation::Null, msg) {
+				Ok(()) => {
+					Self::deposit_event(Event::TestMsg(some_value as u32));
+					log::info!(
+						target: "ping",
+						"upward transfer sent success!"
+					);
+				},
+				Err(e) => {
+					Self::deposit_event(Event::ErrorSendingTest());
+					log::error!(
+						target: "ping",
+						"upward transfer sent failed:{:?}",
+						e,
+					);
+				}
+			}
+			Ok(())
+		}
+
+
+		#[pallet::weight(0)]
+		fn test_upward_withdraw_teleport_downward_transfer(origin: OriginFor<T>, some_value: u128) -> DispatchResult {
+
+			let origin_location:MultiLocation = T::SendXcmOrigin::ensure_origin(origin)?;
+			
+			let account_location = origin_location.first().ok_or_else(|| Error::<T>::PingError)?;
+
+			let account_32 = &*(account_location);
+
+			let para_id = T::SelfParaId::get().into();
+
+			let debt = T::UnitWeightCost::get() * 4;
+			
+			let msg = Xcm::WithdrawAsset {
+				assets:vec![MultiAsset::ConcreteFungible { id: MultiLocation::Null, amount: some_value }],
+				effects: vec![
+					Order::BuyExecution {
+						fees: MultiAsset::All,
+						weight: 0,
+						debt,
+						halt_on_error: false,
+						xcm: vec![]
+					},
+					Order::InitiateTeleport {
+						assets: vec![MultiAsset::All],
+						dest: MultiLocation::X1(Junction::Parachain(para_id)),
+						effects: vec![
+							Order::BuyExecution {
+								fees: MultiAsset::All,
+								weight: 0,
+								debt,
+								halt_on_error: false,
+								xcm: vec![]
+							},
+							Order::DepositAsset {
+								assets: vec![MultiAsset::All],
+								dest: MultiLocation::X1(account_32.clone()),
+							},
+						]
+					}
+				]
+			};
+
+			log::info!(
+				target: "ping",
+				"upward&downward transfer {:?}",
+				msg,
+			);
+
+			match T::XcmSender::send_xcm(MultiLocation::X1(Junction::Parent), msg) {
+				Ok(()) => {
+					Self::deposit_event(Event::TestMsg(some_value as u32));
+					log::info!(
+						target: "ping",
+						"upward&downward transfer sent success!"
+					);
+				},
+				Err(e) => {
+					Self::deposit_event(Event::ErrorSendingTest());
+					log::error!(
+						target: "ping",
+						"upward&downward transfer sent failed:{:?}",
 						e,
 					);
 				}
