@@ -23,8 +23,8 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
 
 # Polkadot dependencies
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
+polkadot-primitives = { git = "https://github.com/yrong/polkadot", branch = "release-v0.9.1" }
+polkadot-service = { git = "https://github.com/yrong/polkadot", branch = "release-v0.9.1" }
 
 # Other deps
 futures = "0.3.6"

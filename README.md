@@ -79,7 +79,7 @@ chain, and from the relay chain to its destination parachain.
 
 ```bash
 # Compile Polkadot with the real overseer feature
-git clone https://github.com/paritytech/polkadot
+git clone https://github.com/yrong/polkadot
 git fetch
 git checkout rococo-v1
 cargo build --release

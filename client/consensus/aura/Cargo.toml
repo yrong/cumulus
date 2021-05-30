@@ -24,7 +24,7 @@ sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polk
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
 
 # Polkadot dependencies
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
+polkadot-service = { git = "https://github.com/yrong/polkadot", branch = "release-v0.9.1" }
 
 # Cumulus dependencies
 cumulus-client-consensus-common = { path = "../common" }

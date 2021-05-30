@@ -19,8 +19,8 @@ sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
 
 # Polkadot deps
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
-polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
+polkadot-primitives = { git = "https://github.com/yrong/polkadot", branch = "release-v0.9.1" }
+polkadot-runtime = { git = "https://github.com/yrong/polkadot", branch = "release-v0.9.1" }
 
 # Other deps
 futures = { version = "0.3.8", features = ["compat"] }
