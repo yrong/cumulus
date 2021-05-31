@@ -68,7 +68,7 @@ use pallet_xcm::{XcmPassthrough, EnsureXcm, IsMajorityOfBody};
 use xcm::v0::Xcm;
 use sp_std::marker::PhantomData;
 use frame_support::traits::Contains;
-use xcm_executor::traits::ShouldExecute;
+use xcm_executor::traits::{ShouldExecute, FilterAssetLocation};
 
 pub type SessionHandlers = ();
 
@@ -349,6 +349,34 @@ pub type Barrier = (
 	AllowXcmTransactFrom<All<MultiLocation>>
 );
 
+pub struct CrosschainConcreteAsset;
+impl FilterAssetLocation for CrosschainConcreteAsset {
+	fn filter_asset_location(asset: &MultiAsset, origin: &MultiLocation) -> bool {
+		use xcm::v0::{
+			MultiAsset::{All, ConcreteFungible}, Junction::{AccountId32,Parachain,Parent},
+		};
+		match asset {
+			MultiAsset::ConcreteFungible {..} => {
+				match origin {
+					Null | X1(Plurality { .. }) => true,
+					X1(AccountId32 { .. }) => true,
+					X1(Parent { .. }) => true,
+					X1(Parachain { .. }) => true,
+					X2(Parachain{..}, _ ) => true,
+					X2(Parent{..}, _ ) => true,
+					_ => false
+				}
+			},
+			_ => false
+		}
+	}
+}
+
+pub type CrosschainAsset = (
+	NativeAsset,
+	CrosschainConcreteAsset,
+);
+
 pub struct XcmConfig;
 impl Config for XcmConfig {
 	type Call = Call;
@@ -356,8 +384,8 @@ impl Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-	type IsReserve = NativeAsset;
-	type IsTeleporter = NativeAsset;	// <- should be enough to allow teleportation of ROC
+	type IsReserve = CrosschainAsset;
+	type IsTeleporter = CrosschainAsset;	// <- should be enough to allow teleportation of ROC
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
