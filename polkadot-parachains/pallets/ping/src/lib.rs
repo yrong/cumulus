@@ -391,7 +391,7 @@ pub mod pallet {
 
 			let para_id = T::SelfParaId::get().into();
 
-			let debt = T::UnitWeightCost::get() * 4;
+			let debt = T::UnitWeightCost::get() * 10;
 			
 			let msg = Xcm::WithdrawAsset {
 				assets:vec![MultiAsset::ConcreteFungible { id: MultiLocation::Null, amount: some_value }],
