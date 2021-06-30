@@ -142,9 +142,9 @@ where
 			BuildAuraWorkerParams {
 				client: para_client,
 				block_import: ParachainBlockImport::new(block_import),
-				justification_sync_link: (),
 				proposer_factory,
 				sync_oracle,
+				justification_sync_link: (),
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore,
