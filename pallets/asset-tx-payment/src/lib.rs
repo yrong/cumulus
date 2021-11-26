@@ -282,11 +282,6 @@ where
 				)?;
 			},
 			InitialPayment::Nothing => {
-				debug_assert!(
-					actual_fee.is_zero(),
-					"actual fee should be zero if initial fee was zero."
-				);
-				debug_assert!(tip.is_zero(), "tip should be zero if initial fee was zero.");
 			},
 		}
 
