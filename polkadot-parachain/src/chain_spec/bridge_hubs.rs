@@ -350,7 +350,7 @@ pub mod rococo {
 				interval: 1,
 			},
 			ethereum_beacon_client: bridge_hub_rococo_runtime::EthereumBeaconClientConfig {
-				initial_sync: Default::default(),
+				initial_checkpoint: Default::default(),
 			},
 		}
 	}
